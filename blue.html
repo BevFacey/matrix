@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Rain</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// --- CONFIG ---
+//var CHARS       = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+//var CHARS       = "アァイウエオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモヤャユュヨョラリルレロワヲン";
+var CHARS       = "BEVbevFACEYfaceyCOMMUNITYcommunityHIGHhighSCHOOLschool";
+var FONT_SIZE   = 22;          // px — increase for fewer columns = faster on old hw
+var FPS         = 20;          // target frames per second (keep low for old hw)
+var BG_ALPHA    = 0.08;        // trail fade per frame (0.04–0.12 works well)
+var FONT_COLOR  = [0, 0, 200]; // RGB of the base font colour — head is brighter, trail is dimmer
+var MIN_SPEED   = 1;           // minimum rows per frame a column advances
+var MAX_SPEED   = 3;           // maximum rows per frame a column advances
+// --------------
+
+// Derived colours — no need to edit these
+var COLOR_HEAD = "rgb(" + Math.min(FONT_COLOR[0] + 80, 255) + ","
+                        + Math.min(FONT_COLOR[1] + 55, 255) + ","
+                        + Math.min(FONT_COLOR[2] + 80, 255) + ")";
+var COLOR_DIM  = "rgb(" + Math.max(FONT_COLOR[0] - 60, 0) + ","
+                        + Math.max(FONT_COLOR[1] - 60, 0) + ","
+                        + Math.max(FONT_COLOR[2] - 60, 0) + ")";
+
+var canvas  = document.getElementById("c");
+var ctx     = canvas.getContext("2d");
+var cols    = 0;
+var drops   = [];   // current Y position (in rows) for each column
+var speeds  = [];   // advance rate (rows per frame) for each column
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  cols = Math.floor(canvas.width / FONT_SIZE);
+
+  // Preserve existing drops/speeds; init only new columns
+  var prev = drops.length;
+  drops.length  = cols;
+  speeds.length = cols;
+  for (var i = prev; i < cols; i++) {
+    drops[i]  = Math.random() * -50 | 0;   // stagger starts off-screen
+    speeds[i] = (Math.random() * (MAX_SPEED - MIN_SPEED) + MIN_SPEED) | 0 || 1;
+  }
+}
+
+function draw() {
+  // Fade background — single fillRect = one draw call
+  ctx.fillStyle = "rgba(0,0,0," + BG_ALPHA + ")";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.font = FONT_SIZE + "px monospace";
+
+  for (var i = 0; i < cols; i++) {
+    var y = drops[i] * FONT_SIZE;
+
+    // Draw the bright head character
+    if (y >= 0 && y < canvas.height + FONT_SIZE) {
+      ctx.fillStyle = COLOR_HEAD;
+      var headChar = CHARS[Math.random() * CHARS.length | 0];
+      ctx.fillText(headChar, i * FONT_SIZE, y);
+    }
+
+    // Draw a dim trailing character one row above the head
+    // (the canvas fade handles the full trail; this just sharpens the step behind head)
+    if (y > FONT_SIZE) {
+      ctx.fillStyle = COLOR_DIM;
+      var trailChar = CHARS[Math.random() * CHARS.length | 0];
+      ctx.fillText(trailChar, i * FONT_SIZE, y - FONT_SIZE);
+    }
+
+    // Advance column
+    drops[i] += speeds[i];
+
+    // Reset when off the bottom — random chance to delay restart
+    if (drops[i] * FONT_SIZE > canvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+  }
+}
+
+// Throttled RAF loop — avoids running faster than FPS on fast devices
+var interval  = 1000 / FPS;
+var lastTime  = 0;
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (now - lastTime < interval) return;
+  lastTime = now - ((now - lastTime) % interval);
+  draw();
+}
+
+window.addEventListener("resize", resize);
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
